@@ -1,19 +1,27 @@
-name: Build and Deploy
+name: Build and Publish Static Site
 
 on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
@@ -21,10 +29,26 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Commit build folder
+      - name: Publish dist/spa to deploy-branch
+        shell: bash
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add dist/ -f
-          git commit -m "Deploy build [skip ci]" || echo "Nothing to commit"
-          git push
+          set -e
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          rm -rf /tmp/deploy-site
+          mkdir -p /tmp/deploy-site
+
+          shopt -s dotglob
+          cp -r dist/spa/* /tmp/deploy-site/
+
+          git checkout --orphan deploy-branch
+          git rm -rf . || true
+
+          cp -r /tmp/deploy-site/* .
+          touch .nojekyll
+
+          git add .
+          git commit -m "Deploy static build from ${GITHUB_SHA}"
+          git push -f origin deploy-branch
