@@ -29,6 +29,17 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Add SPA fallback .htaccess
+        run: |
+          cat > dist/spa/.htaccess <<'EOF'
+          RewriteEngine On
+          RewriteBase /
+          RewriteRule ^index\.html$ - [L]
+          RewriteCond %{REQUEST_FILENAME} !-f
+          RewriteCond %{REQUEST_FILENAME} !-d
+          RewriteRule . /index.html [L]
+          EOF
+
       - name: Publish dist/spa to deploy-branch
         shell: bash
         run: |
