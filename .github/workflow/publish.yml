@@ -31,7 +31,7 @@ jobs:
 
       - name: Add SPA fallback .htaccess
         run: |
-          cat > dist/spa/.htaccess <<'EOF'
+          cat > dist/.htaccess <<'EOF'
           RewriteEngine On
           RewriteBase /
           RewriteRule ^index\.html$ - [L]
@@ -40,7 +40,7 @@ jobs:
           RewriteRule . /index.html [L]
           EOF
 
-      - name: Publish dist/spa to deploy-branch
+      - name: Publish dist to deploy branch
         shell: bash
         run: |
           set -e
@@ -52,9 +52,10 @@ jobs:
           mkdir -p /tmp/deploy-site
 
           shopt -s dotglob
-          cp -r dist/spa/* /tmp/deploy-site/
+          cp -r dist/* /tmp/deploy-site/
 
-          git checkout --orphan deploy-branch
+          git fetch origin
+          git checkout --orphan deploy
           git rm -rf . || true
 
           cp -r /tmp/deploy-site/* .
@@ -62,4 +63,7 @@ jobs:
 
           git add .
           git commit -m "Deploy static build from ${GITHUB_SHA}"
-          git push -f origin deploy-branch
+          git push -f origin deploy
+
+      - name: Trigger Hostinger deployment
+        run: curl -X POST "${{ secrets.HOSTINGER_WEBHOOK_URL }}"
