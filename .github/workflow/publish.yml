@@ -12,10 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -40,29 +38,32 @@ jobs:
           RewriteRule . /index.html [L]
           EOF
 
-      - name: Publish dist to deploy branch
+      - name: Publish build output to deploy branch
         shell: bash
         run: |
           set -e
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          rm -rf /tmp/deploy-site
-          mkdir -p /tmp/deploy-site
+          rm -rf /tmp/deploy-site /tmp/deploy-repo
+          mkdir -p /tmp/deploy-site /tmp/deploy-repo
 
           shopt -s dotglob
           cp -r dist/* /tmp/deploy-site/
 
-          git fetch origin
-          git checkout --orphan deploy
-          git rm -rf . || true
+          cd /tmp/deploy-repo
+          git init
+          git checkout -b deploy
 
           cp -r /tmp/deploy-site/* .
+
           touch .nojekyll
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add .
           git commit -m "Deploy static build from ${GITHUB_SHA}"
+
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push -f origin deploy
 
       - name: Trigger Hostinger deployment
